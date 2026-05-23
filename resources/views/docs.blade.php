@@ -275,6 +275,67 @@
             height: calc(100vh - 60px);
             width: 100%;
         }
+
+        /* Premium Light Theme Overrides */
+        body.theme-light {
+            background: #f9fafb;
+            color: #1f2937;
+        }
+        body.theme-light .premium-header {
+            background: rgba(255, 255, 255, 0.85);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
+        body.theme-light .logo-title {
+            color: #111827;
+        }
+        body.theme-light .btn-secondary {
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            color: #374151;
+        }
+        body.theme-light .btn-secondary:hover {
+            background: rgba(0, 0, 0, 0.08);
+            color: #111827;
+        }
+        body.theme-light .drawer-overlay {
+            background: rgba(255, 255, 255, 0.85);
+            border-left: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1);
+        }
+        body.theme-light .close-btn {
+            color: #6b7280;
+        }
+        body.theme-light .close-btn:hover {
+            color: #111827;
+        }
+        body.theme-light .tab-bar {
+            background: rgba(0, 0, 0, 0.02);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+        body.theme-light .tab-btn {
+            color: #4b5563;
+        }
+        body.theme-light .tab-btn.active {
+            background: rgba(59, 130, 246, 0.1);
+            color: #2563eb;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+        body.theme-light .code-container {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+        body.theme-light .code-display {
+            color: #1f2937;
+        }
+        body.theme-light .copy-btn {
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            color: #4b5563;
+        }
+        body.theme-light .copy-btn:hover {
+            background: rgba(0, 0, 0, 0.08);
+            color: #111827;
+        }
     </style>
 </head>
 <body>
@@ -300,7 +361,8 @@
             id="docs-engine"
             apiDescriptionUrl="{{ $schemaUrl }}" 
             router="hash" 
-            layout="sidebar">
+            layout="sidebar"
+            appearance="dark">
         </elements-api>
     </div>
 
@@ -338,12 +400,35 @@
         let apiSchema = null;
 
         function toggleTheme() {
-            const el = document.getElementById('docs-engine');
-            const current = el.getAttribute('appearance') || 'dark';
-            const next = current === 'light' ? 'dark' : 'light';
-            el.setAttribute('appearance', next);
+            const body = document.body;
+            const isLight = body.classList.toggle('theme-light');
+            const next = isLight ? 'light' : 'dark';
             localStorage.setItem('blueprint_theme', next);
+            
+            // Re-create elements-api component to force Stoplight Elements to re-render in the new theme
+            const container = document.querySelector('.elements-wrapper');
+            const newEl = document.createElement('elements-api');
+            newEl.id = 'docs-engine';
+            newEl.setAttribute('apiDescriptionUrl', "{{ $schemaUrl }}");
+            newEl.setAttribute('router', 'hash');
+            newEl.setAttribute('layout', 'sidebar');
+            newEl.setAttribute('appearance', next);
+            
+            container.innerHTML = '';
+            container.appendChild(newEl);
         }
+
+        // Restore saved theme on initial page boot
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('blueprint_theme') || 'dark';
+            if (savedTheme === 'light') {
+                document.body.classList.add('theme-light');
+                const el = document.getElementById('docs-engine');
+                if (el) {
+                    el.setAttribute('appearance', 'light');
+                }
+            }
+        });
 
         function openDrawer() {
             document.getElementById('code-drawer').classList.add('active');
