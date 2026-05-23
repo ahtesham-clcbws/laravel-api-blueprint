@@ -19,3 +19,8 @@ This document tracks active iterations, error logs, and core logic shifts during
   - Converted the Git remote origin target to use verified SSH credentials (`git@github.com:ahtesham-clcbws/laravel-api-blueprint.git`).
   - Successfully pushed the `master` branch and the release tag `v1.0.0` to the remote repository.
 - **Observations**: Authentic SSH key detected locally for `ahtesham-clcbws`, allowing instant passwordless deployment.
+
+## [2026-05-23] Stoplight Elements data-theme Toggle Fix
+- **Action**: Updated `docs.blade.php` to define `data-theme="dark"` by default on the `<body>` element.
+- **Visual Enhancement**: Updated javascript toggler and DOMContentLoaded logic to switch the parent `data-theme` attribute on the `<body>` between `dark` and `light` alongside the element's `appearance` attribute. This triggers Stoplight's internal custom CSS properties, making the entire specifications canvas render in dark/light mode dynamically.
+- **Git State**: Committed all updates locally to git. Respected user command to pause remote push operations.
