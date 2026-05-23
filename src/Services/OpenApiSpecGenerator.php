@@ -15,6 +15,21 @@ class OpenApiSpecGenerator
                 'version' => '1.0.0',
                 'description' => 'Automatically generated API Specifications via Laravel API Blueprint.',
             ],
+            'servers' => [
+                [
+                    'url' => rtrim(config('app.url', 'http://localhost'), '/'),
+                    'description' => config('app.name', 'Laravel') . ' API Server',
+                ],
+            ],
+            'components' => [
+                'securitySchemes' => [
+                    'bearerAuth' => [
+                        'type' => 'http',
+                        'scheme' => 'bearer',
+                        'bearerFormat' => 'token',
+                    ],
+                ],
+            ],
             'paths' => [],
         ];
 
@@ -25,10 +40,22 @@ class OpenApiSpecGenerator
 
                 $pathItem = [
                     'summary' => $route['name'],
-                    'responses' => [
-                        '200' => [
-                            'description' => 'Successful operation',
+                    'tags' => $this->determineRouteTags($route['uri']),
+                    // Accept: application/json forces Laravel to return JSON
+                    // instead of a 302 HTML redirect on validation failure.
+                    'parameters' => [
+                        [
+                            'name' => 'Accept',
+                            'in' => 'header',
+                            'required' => true,
+                            'schema' => ['type' => 'string', 'default' => 'application/json'],
                         ],
+                    ],
+                    'responses' => [
+                        '200' => ['description' => 'Successful operation'],
+                        '201' => ['description' => 'Resource created successfully'],
+                        '401' => ['description' => 'Unauthenticated'],
+                        '422' => ['description' => 'Validation error'],
                     ],
                 ];
 
@@ -133,5 +160,21 @@ class OpenApiSpecGenerator
             }
         }
         return $required;
+    }
+
+    /**
+     * Determine route tags based on the URI structure segment.
+     */
+    protected function determineRouteTags(string $uri): array
+    {
+        $clean = ltrim($uri, '/');
+        if (str_starts_with($clean, 'api/')) {
+            $clean = substr($clean, 4);
+        }
+        
+        $segments = explode('/', $clean);
+        $primary = $segments[0] ?? 'General';
+        
+        return [ucfirst($primary)];
     }
 }

@@ -336,6 +336,41 @@
             background: rgba(0, 0, 0, 0.08);
             color: #111827;
         }
+
+        /* ─── Left-column: Request & Response section separation ───
+         * SAFE: only visual decoration — no layout properties.
+         * data-testid="request" wraps the Request (Body/fields) block.
+         * data-testid="response" wraps each Responses block.
+         * border-radius without overflow:hidden is purely cosmetic.
+         * ─────────────────────────────────────────────────────────── */
+        .sl-elements [data-testid="request"],
+        .sl-elements [data-testid="response"] {
+            border: 1px solid rgba(59, 130, 246, 0.18) !important;
+            background: rgba(59, 130, 246, 0.04) !important;
+            border-radius: 10px !important;
+        }
+
+        /* Slightly bolder accent on the left edge */
+        .sl-elements [data-testid="request"] {
+            border-left: 3px solid rgba(59, 130, 246, 0.5) !important;
+        }
+        .sl-elements [data-testid="response"] {
+            border-left: 3px solid rgba(16, 185, 129, 0.5) !important;
+        }
+
+        /* Light theme variants */
+        body.theme-light .sl-elements [data-testid="request"],
+        body.theme-light .sl-elements [data-testid="response"] {
+            border-color: rgba(59, 130, 246, 0.12) !important;
+            background: rgba(59, 130, 246, 0.03) !important;
+        }
+        body.theme-light .sl-elements [data-testid="request"] {
+            border-left-color: rgba(59, 130, 246, 0.4) !important;
+        }
+        body.theme-light .sl-elements [data-testid="response"] {
+            border-left-color: rgba(16, 185, 129, 0.4) !important;
+        }
+
     </style>
 </head>
 <body data-theme="dark">
