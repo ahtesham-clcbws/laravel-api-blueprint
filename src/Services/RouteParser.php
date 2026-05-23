@@ -51,12 +51,76 @@ class RouteParser
             }
 
             $rawRules = $this->extractValidationRules($controller, $method, $route);
+
+            // Automatically inject confirmation fields for any 'confirmed' validation rule
+            $injectedRules = $rawRules;
+            foreach ($rawRules as $field => $rules) {
+                $rulesString = is_array($rules) ? implode('|', $rules) : (string)$rules;
+                if (str_contains($rulesString, 'confirmed')) {
+                    $confField = $field . '_confirmation';
+                    if (!isset($rawRules[$confField])) {
+                        $confRules = [];
+                        if (str_contains($rulesString, 'required')) {
+                            $confRules[] = 'required';
+                        }
+                        if (str_contains($rulesString, 'string')) {
+                            $confRules[] = 'string';
+                        }
+                        if (empty($confRules)) {
+                            $confRules[] = 'string';
+                        }
+                        $injectedRules[$confField] = $confRules;
+                    }
+                }
+            }
+            $rawRules = $injectedRules;
+
             $nestedSchema = $this->buildNestedSchema($rawRules);
+
+            // Reflection-based PHPDoc extraction (Scramble-equivalent automatic parsing)
+            $summary = '';
+            $description = '';
+            $customResponses = [];
+            try {
+                $reflection = new \ReflectionMethod($controller, $method);
+                $docComment = $reflection->getDocComment();
+                if ($docComment !== false) {
+                    $lines = explode("\n", $docComment);
+                    $cleanLines = [];
+                    foreach ($lines as $line) {
+                        $line = trim($line, "/* \t\r\n");
+                        if ($line === '') {
+                            continue;
+                        }
+                        if (str_starts_with($line, '@response ')) {
+                            $parts = preg_split('/\s+/', substr($line, 10), 2);
+                            if (count($parts) >= 1) {
+                                $code = $parts[0];
+                                $desc = $parts[1] ?? 'Successful operation';
+                                $customResponses[$code] = ['description' => $desc];
+                            }
+                        } elseif (!str_starts_with($line, '@')) {
+                            $cleanLines[] = $line;
+                        }
+                    }
+                    if (count($cleanLines) > 0) {
+                        $summary = $cleanLines[0];
+                        if (count($cleanLines) > 1) {
+                            $description = implode(' ', array_slice($cleanLines, 1));
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Fail-safe
+            }
 
             $apiRoutes[] = [
                 'uri'          => $route->uri(),
                 'methods'      => array_filter($route->methods(), fn($m) => $m !== 'HEAD'),
                 'name'         => $route->getName() ?? $this->generateRouteName($route->uri(), $route->methods()),
+                'summary'      => $summary !== '' ? $summary : ($route->getName() ?? $this->generateRouteName($route->uri(), $route->methods())),
+                'description'  => $description,
+                'responses'    => $customResponses,
                 'raw_rules'    => $rawRules,
                 'nested_rules' => $nestedSchema,
             ];
@@ -215,22 +279,26 @@ class RouteParser
                         if (isset($current['properties'][$part])) {
                             $current['properties'][$part]['type'] = ($current['properties'][$part]['type'] === 'object' || !empty($current['properties'][$part]['properties'])) ? 'object' : $type;
                             $current['properties'][$part]['required'] = $required;
+                            $current['properties'][$part]['rules'] = $rules;
                         } else {
                             $current['properties'][$part] = [
                                 'name' => $part,
                                 'type' => $type,
                                 'required' => $required,
+                                'rules' => $rules,
                             ];
                         }
                     } else {
                         if (isset($current[$part])) {
                             $current[$part]['type'] = ($current[$part]['type'] === 'object' || !empty($current[$part]['properties'])) ? 'object' : $type;
                             $current[$part]['required'] = $required;
+                            $current[$part]['rules'] = $rules;
                         } else {
                             $current[$part] = [
                                 'name' => $part,
                                 'type' => $type,
                                 'required' => $required,
+                                'rules' => $rules,
                             ];
                         }
                     }
