@@ -18,7 +18,12 @@ export default defineConfig({
     ],
     server: {
         watch: {
-            ignored: ['**/storage/framework/views/**'],
+            ignored: [
+                '**/storage/framework/views/**',
+                '**/vendor/**',           // prevents ELOOP from symlinked package
+                '**/.git/**',
+            ],
+            followSymlinks: false,        // never follow symlinks in the watcher
         },
     },
 });
