@@ -24,3 +24,9 @@ This document tracks active iterations, error logs, and core logic shifts during
 - **Action**: Updated `docs.blade.php` to define `data-theme="dark"` by default on the `<body>` element.
 - **Visual Enhancement**: Updated javascript toggler and DOMContentLoaded logic to switch the parent `data-theme` attribute on the `<body>` between `dark` and `light` alongside the element's `appearance` attribute. This triggers Stoplight's internal custom CSS properties, making the entire specifications canvas render in dark/light mode dynamically.
 - **Git State**: Committed all updates locally to git. Respected user command to pause remote push operations.
+
+## [2026-05-23] Relational API Routing Separation
+- **Action**: Separated API routes from `routes/web.php` into standard `routes/api.php` inside `demo_project`.
+- **Bootstrapping**: Registered standard `api` routes configuration in `demo_project/bootstrap/app.php`. All API routes now automatically resolve under the `/api` prefix and the `api` group.
+- **Dev Automation**: Set `API_BLUEPRINT_CACHE=false` inside the demo `.env` to disable document caching in development. This enables the live parser on `http://127.0.0.1:8000/api-blueprint#/` to dynamically pick up new endpoints, payload fields, and changes on every refresh automatically.
+- **Git State**: Committed changes locally. Pushes are withheld in compliance with user directives.
