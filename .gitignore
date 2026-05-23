@@ -4,3 +4,4 @@
 /.vscode/
 /storage/
 .phpunit.result.cache
+.agents
