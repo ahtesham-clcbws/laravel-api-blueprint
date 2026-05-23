@@ -201,39 +201,39 @@ src/
 
 ```mermaid
 flowchart TD
-    A["🚀 Laravel Application\n(Routes / Controllers / FormRequests)"]
+    A["Laravel Application - Routes / Controllers / FormRequests"]
 
-    subgraph PARSE ["⚙️ Parsing Engine"]
-        B["RouteParser\n(RouteParser.php)"]
-        B1["Reflection Context\nMocking & Container Binding"]
-        B2["Dot-Notation Schema\nMapper (Nested → Object)"]
+    subgraph PARSE ["Parsing Engine"]
+        B["RouteParser"]
+        B1["Reflection Context Mocking and Container Binding"]
+        B2["Dot-Notation Schema Mapper - Nested to Object"]
         B --> B1 --> B2
     end
 
-    subgraph REGISTRY ["🗃️ Internal Schema Registry"]
-        C["Compiled OpenAPI\nSchema Graph\n(in-memory / cached)"]
+    subgraph REGISTRY ["Internal Schema Registry"]
+        C["Compiled OpenAPI Schema Graph - in-memory / cached"]
     end
 
-    subgraph GENERATORS ["🔧 Generator Services"]
+    subgraph GENERATORS ["Generator Services"]
         direction LR
-        G1["TypeScriptGenerator\n→ api.d.ts"]
-        G2["SwiftGenerator\n→ api.swift"]
-        G3["JavaGenerator\n→ dto/ApiDTOs.java"]
-        G4["DartGenerator\n→ api.dart"]
-        G5["GoGenerator\n→ api.go"]
-        G6["PostmanGenerator\n→ postman_collection.json"]
-        G7["OpenApiSpecGenerator\n→ openapi.json"]
+        G1["TypeScriptGenerator - api.d.ts"]
+        G2["SwiftGenerator - api.swift"]
+        G3["JavaGenerator - dto/ApiDTOs.java"]
+        G4["DartGenerator - api.dart"]
+        G5["GoGenerator - api.go"]
+        G6["PostmanGenerator - postman_collection.json"]
+        G7["OpenApiSpecGenerator - openapi.json"]
     end
 
-    subgraph CLI ["🖥️ Artisan CLI"]
-        E["blueprint:export\n(ExportApiArtifacts.php)"]
+    subgraph CLI ["Artisan CLI"]
+        E["blueprint:export - ExportApiArtifacts.php"]
     end
 
-    subgraph UI ["🌐 Live Documentation UI"]
-        F1["ApiBlueprintController\n(serves /api-blueprint)"]
-        F2["GatedDocAccess Middleware\n(Basic Auth / Gate)"]
-        F3["docs.blade.php\n+ Stoplight Elements Viewer"]
-        F4["🎨 Glassmorphism Drawer\n(Client Schema Tabs)"]
+    subgraph UI ["Live Documentation UI"]
+        F2["GatedDocAccess Middleware - Basic Auth / Gate"]
+        F1["ApiBlueprintController - serves /api-blueprint"]
+        F3["docs.blade.php + Stoplight Elements Viewer"]
+        F4["Glassmorphism Drawer - Client Schema Tabs"]
         F2 --> F1 --> F3 --> F4
     end
 
@@ -246,9 +246,14 @@ flowchart TD
     C --> G5
     C --> G6
     C --> G7
-    G7 --> UI
+    G7 --> F2
     C --> E
-    G1 & G2 & G3 & G4 & G5 & G6 --> E
+    G1 --> E
+    G2 --> E
+    G3 --> E
+    G4 --> E
+    G5 --> E
+    G6 --> E
 
     style PARSE fill:#1e1e2e,stroke:#7c3aed,color:#e2e8f0
     style REGISTRY fill:#1e1e2e,stroke:#0ea5e9,color:#e2e8f0
