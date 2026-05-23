@@ -21,7 +21,10 @@ In our latest pass, we:
 - **PHPDoc for Method Signature Compatibility**: Orchestra Testbench's base class `TestCase` implements `defineRoutes($router)` without an explicit PHP type-hint. Adding a type-hint `Router $router` in the subclass throws a fatal method signature mismatch. Utilizing a PHPDoc `@param \Illuminate\Routing\Router $router` satisfies linter indexers perfectly without violating PHP syntax runtime requirements.
 - **Explicit Properties-Based Nested Array Conversion**: Updated structural array detection logic across all 5 technology generators and OpenAPI specs to check `!empty($prop['items']['properties'])` instead of strict type checks. This guarantees that wildcard array lists of objects (e.g., `tags.*.name` or `items.*.quantity`) are automatically compiled into real, recursively nested arrays of structures.
 
----
-
 ## Unresolved Questions & Next Steps
 - None! All components are fully resolved, successfully integrated, and pass 100% of automated checks.
+
+## Hotfixes & Re-tagging [2026-05-23]
+- **Theme Toggle Bug Resolved**: Stoplight Elements `<elements-api>` has been re-architected to dynamically re-render on the fly when the dark/light toggle is clicked by recreating the DOM node.
+- **Synchronized UI Variables**: Integrated body class `.theme-light` which flips premium background and text variables, matching Stoplight's internal light mode perfectly.
+- **Git Alignment**: Refreshed `v1.0.0` release tag to encapsulate the visual fixes, ensuring a pristine first release on GitHub.

@@ -20,6 +20,9 @@ This backlog tracks the sprints and tasks for developing, reviewing, and improvi
 - [x] Scaffold realistic complex API routes, controllers, and FormRequest classes containing nested lists and objects
 - [x] Run Artisan export command verifying 100% accuracy of generated output files
 - [x] Boot up Laravel development server for live user verification
+- [x] Set proper release version `1.0.0` in package files
+- [x] Implement dynamic dark/light theme toggler recreation in UI view
+- [x] Push clean release commits and tag `v1.0.0` via SSH remote endpoint
 
 ## Sprint 1: Future Enhancements (Backlog)
 - [ ] Add support for custom response templates parser (automatically mapping controller response payloads)
