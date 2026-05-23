@@ -197,6 +197,67 @@ src/
     └── ExportApiArtifacts.php                 # Artisan CLI exporter command execution
 ```
 
+### 🗺️ Data-Flow Architecture
+
+```mermaid
+flowchart TD
+    A["🚀 Laravel Application\n(Routes / Controllers / FormRequests)"]
+
+    subgraph PARSE ["⚙️ Parsing Engine"]
+        B["RouteParser\n(RouteParser.php)"]
+        B1["Reflection Context\nMocking & Container Binding"]
+        B2["Dot-Notation Schema\nMapper (Nested → Object)"]
+        B --> B1 --> B2
+    end
+
+    subgraph REGISTRY ["🗃️ Internal Schema Registry"]
+        C["Compiled OpenAPI\nSchema Graph\n(in-memory / cached)"]
+    end
+
+    subgraph GENERATORS ["🔧 Generator Services"]
+        direction LR
+        G1["TypeScriptGenerator\n→ api.d.ts"]
+        G2["SwiftGenerator\n→ api.swift"]
+        G3["JavaGenerator\n→ dto/ApiDTOs.java"]
+        G4["DartGenerator\n→ api.dart"]
+        G5["GoGenerator\n→ api.go"]
+        G6["PostmanGenerator\n→ postman_collection.json"]
+        G7["OpenApiSpecGenerator\n→ openapi.json"]
+    end
+
+    subgraph CLI ["🖥️ Artisan CLI"]
+        E["blueprint:export\n(ExportApiArtifacts.php)"]
+    end
+
+    subgraph UI ["🌐 Live Documentation UI"]
+        F1["ApiBlueprintController\n(serves /api-blueprint)"]
+        F2["GatedDocAccess Middleware\n(Basic Auth / Gate)"]
+        F3["docs.blade.php\n+ Stoplight Elements Viewer"]
+        F4["🎨 Glassmorphism Drawer\n(Client Schema Tabs)"]
+        F2 --> F1 --> F3 --> F4
+    end
+
+    A --> B
+    B2 --> C
+    C --> G1
+    C --> G2
+    C --> G3
+    C --> G4
+    C --> G5
+    C --> G6
+    C --> G7
+    G7 --> UI
+    C --> E
+    G1 & G2 & G3 & G4 & G5 & G6 --> E
+
+    style PARSE fill:#1e1e2e,stroke:#7c3aed,color:#e2e8f0
+    style REGISTRY fill:#1e1e2e,stroke:#0ea5e9,color:#e2e8f0
+    style GENERATORS fill:#1e1e2e,stroke:#10b981,color:#e2e8f0
+    style CLI fill:#1e1e2e,stroke:#f59e0b,color:#e2e8f0
+    style UI fill:#1e1e2e,stroke:#ef4444,color:#e2e8f0
+    style A fill:#7c3aed,stroke:#7c3aed,color:#fff
+```
+
 ---
 
 ## 🧪 Automated Testing
