@@ -18,6 +18,8 @@ class StoreProductRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
+            'description' => 'nullable|string',
+            'category_id' => 'required|integer|exists:categories,id',
             'details' => 'array',
             'details.color' => 'string|max:50',
             'details.size' => 'string|max:10',
