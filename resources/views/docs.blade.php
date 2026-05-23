@@ -338,7 +338,7 @@
         }
     </style>
 </head>
-<body>
+<body data-theme="dark">
 
     <!-- Premium Header -->
     <header class="premium-header">
@@ -401,9 +401,17 @@
 
         function toggleTheme() {
             const body = document.body;
-            const isLight = body.classList.toggle('theme-light');
-            const next = isLight ? 'light' : 'dark';
+            const current = body.getAttribute('data-theme') || 'dark';
+            const next = current === 'light' ? 'dark' : 'light';
+            
+            body.setAttribute('data-theme', next);
             localStorage.setItem('blueprint_theme', next);
+            
+            if (next === 'light') {
+                body.classList.add('theme-light');
+            } else {
+                body.classList.remove('theme-light');
+            }
             
             const el = document.getElementById('docs-engine');
             if (el) {
@@ -414,11 +422,18 @@
         // Restore saved theme on initial page boot
         window.addEventListener('DOMContentLoaded', () => {
             const savedTheme = localStorage.getItem('blueprint_theme') || 'dark';
+            document.body.setAttribute('data-theme', savedTheme);
             if (savedTheme === 'light') {
                 document.body.classList.add('theme-light');
                 const el = document.getElementById('docs-engine');
                 if (el) {
                     el.setAttribute('appearance', 'light');
+                }
+            } else {
+                document.body.classList.remove('theme-light');
+                const el = document.getElementById('docs-engine');
+                if (el) {
+                    el.setAttribute('appearance', 'dark');
                 }
             }
         });
