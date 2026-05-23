@@ -85,6 +85,15 @@ class OpenApiSpecGenerator
                     $pathItem['description'] = $route['description'];
                 }
 
+                // If authentication is required, map the Bearer Token security requirements
+                if ($route['auth_required'] ?? false) {
+                    $pathItem['security'] = [
+                        [
+                            'bearerAuth' => [],
+                        ],
+                    ];
+                }
+
                 // Parse request body for POST/PUT/PATCH methods
                 if (!empty($route['nested_rules']) && in_array($method, ['post', 'put', 'patch'])) {
                     $properties = $this->mapNestedPropertiesToOpenApi($route['nested_rules']);

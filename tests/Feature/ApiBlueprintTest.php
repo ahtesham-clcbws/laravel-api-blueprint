@@ -38,7 +38,7 @@ class ApiBlueprintTest extends TestCase
         // Bind mock controllers & endpoints for the test suite
         $router->post('/api/users/store', [MockUserController::class, 'store'])->name('users.store');
         $router->get('/api/users/index', [MockUserController::class, 'index'])->name('users.index');
-        $router->get('/api/users/{id}/profile', [MockUserController::class, 'show'])->name('users.show');
+        $router->get('/api/users/{id}/profile', [MockUserController::class, 'show'])->name('users.show')->middleware('auth');
     }
 
     public function test_route_parser_extracts_api_routes_safely(): void
@@ -73,6 +73,7 @@ class ApiBlueprintTest extends TestCase
         $this->assertEquals('This registers a new mock user inside the database.', $storeRoute['description']);
         $this->assertArrayHasKey('404', $storeRoute['responses']);
         $this->assertEquals('User not found.', $storeRoute['responses']['404']['description']);
+        $this->assertFalse($storeRoute['auth_required']);
 
         $showRoute = Collection::make($routes)->firstWhere('name', 'users.show');
         $this->assertNotNull($showRoute);
@@ -80,6 +81,7 @@ class ApiBlueprintTest extends TestCase
         $this->assertEquals('Retrieves user profile details.', $showRoute['description']);
         $this->assertArrayHasKey('403', $showRoute['responses']);
         $this->assertEquals('Forbidden.', $showRoute['responses']['403']['description']);
+        $this->assertTrue($showRoute['auth_required']);
     }
 
     public function test_route_parser_maps_nested_rules_correctly(): void
@@ -231,6 +233,11 @@ class ApiBlueprintTest extends TestCase
         $this->assertEquals('id', $pathParam['name']);
         $this->assertTrue($pathParam['required']);
         $this->assertEquals('The id identifier.', $pathParam['description']);
+
+        // Assert route security requirements mapping
+        $this->assertArrayNotHasKey('security', $postStore);
+        $this->assertArrayHasKey('security', $getShow);
+        $this->assertEquals([['bearerAuth' => []]], $getShow['security']);
     }
 
     public function test_postman_generator_creates_collection(): void

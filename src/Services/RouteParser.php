@@ -114,6 +114,24 @@ class RouteParser
                 // Fail-safe
             }
 
+            // Extract and verify route middleware to determine if authentication is required (Scramble-equivalent)
+            $middlewares = method_exists($route, 'gatherMiddleware') ? $route->gatherMiddleware() : [];
+            $authRequired = false;
+            foreach ($middlewares as $mw) {
+                if (is_string($mw)) {
+                    if (str_contains($mw, 'auth') || str_contains($mw, 'AuthenticateApiToken')) {
+                        $authRequired = true;
+                        break;
+                    }
+                } elseif (is_object($mw)) {
+                    $mwClass = get_class($mw);
+                    if (str_contains($mwClass, 'AuthenticateApiToken') || str_contains($mwClass, 'auth')) {
+                        $authRequired = true;
+                        break;
+                    }
+                }
+            }
+
             $apiRoutes[] = [
                 'uri'          => $route->uri(),
                 'methods'      => array_filter($route->methods(), fn($m) => $m !== 'HEAD'),
@@ -121,6 +139,7 @@ class RouteParser
                 'summary'      => $summary !== '' ? $summary : ($route->getName() ?? $this->generateRouteName($route->uri(), $route->methods())),
                 'description'  => $description,
                 'responses'    => $customResponses,
+                'auth_required'=> $authRequired,
                 'raw_rules'    => $rawRules,
                 'nested_rules' => $nestedSchema,
             ];
