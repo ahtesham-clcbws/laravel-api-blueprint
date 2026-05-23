@@ -17,17 +17,21 @@ class AuthController extends Controller
      */
     public function register(RegisterRequest $request): JsonResponse
     {
+        $token = \Illuminate\Support\Str::random(60);
         $user = User::create([
             'name' => $request->input('name'),
             'email' => $request->input('email'),
             'password' => Hash::make($request->input('password')),
         ]);
 
+        $user->forceFill(['api_token' => $token])->save();
+
         Auth::login($user);
 
         return response()->json([
             'message' => 'User registered and authenticated successfully.',
             'user' => $user,
+            'token' => $token,
         ], 201);
     }
 
@@ -45,10 +49,13 @@ class AuthController extends Controller
         }
 
         $user = Auth::user();
+        $token = \Illuminate\Support\Str::random(60);
+        $user->forceFill(['api_token' => $token])->save();
 
         return response()->json([
             'message' => 'Authenticated successfully.',
             'user' => $user,
+            'token' => $token,
         ]);
     }
 
@@ -75,6 +82,10 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
+        $user = Auth::user();
+        if ($user) {
+            $user->forceFill(['api_token' => null])->save();
+        }
         Auth::logout();
 
         return response()->json([
