@@ -405,17 +405,10 @@
             const next = isLight ? 'light' : 'dark';
             localStorage.setItem('blueprint_theme', next);
             
-            // Re-create elements-api component to force Stoplight Elements to re-render in the new theme
-            const container = document.querySelector('.elements-wrapper');
-            const newEl = document.createElement('elements-api');
-            newEl.id = 'docs-engine';
-            newEl.setAttribute('apiDescriptionUrl', "{{ $schemaUrl }}");
-            newEl.setAttribute('router', 'hash');
-            newEl.setAttribute('layout', 'sidebar');
-            newEl.setAttribute('appearance', next);
-            
-            container.innerHTML = '';
-            container.appendChild(newEl);
+            const el = document.getElementById('docs-engine');
+            if (el) {
+                el.setAttribute('appearance', next);
+            }
         }
 
         // Restore saved theme on initial page boot
