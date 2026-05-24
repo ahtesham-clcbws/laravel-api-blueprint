@@ -110,6 +110,56 @@ class RouteParser
                         }
                     }
                 }
+
+                // Automatically scan code body to extract returned JSON keys (Scramble-equivalent)
+                $filename = $reflection->getFileName();
+                if ($filename && file_exists($filename)) {
+                    $fileContent = file_get_contents($filename);
+                    $fileLines = explode("\n", $fileContent);
+                    $start = $reflection->getStartLine() - 1;
+                    $end = $reflection->getEndLine();
+                    $methodCode = implode("\n", array_slice($fileLines, $start, $end - $start));
+
+                    // Match return response()->json([ ... ]) or Response::json([ ... ]) or response([ ... ])
+                    if (preg_match_all('/(?:response\(\)->json|Response::json|response)\s*\(\s*/s', $methodCode, $responseMatches, PREG_OFFSET_CAPTURE)) {
+                        foreach ($responseMatches[0] as $match) {
+                            $offset = $match[1] + strlen($match[0]);
+                            $arrayContent = $this->extractBalancedArrayString($methodCode, $offset);
+                            if ($arrayContent !== null) {
+                                // Extract status code if any after the array
+                                $afterArray = substr($methodCode, $offset + strlen($arrayContent) + 2); // skip starting '[' and ending ']'
+                                $statusCode = (str_contains(strtolower($method), 'store') ? '201' : '200');
+                                if (preg_match('/^\s*,\s*(\d+)/', $afterArray, $statusMatches)) {
+                                    $statusCode = $statusMatches[1];
+                                }
+
+                                $keys = $this->parseTopLevelKeys($arrayContent);
+
+                                if (!empty($keys)) {
+                                    if (!isset($customResponses[$statusCode])) {
+                                        $customResponses[$statusCode] = [
+                                            'description' => $statusCode === '201' ? 'Resource created successfully' : 'Successful operation'
+                                        ];
+                                    }
+                                    if (!isset($customResponses[$statusCode]['schema_properties'])) {
+                                        $customResponses[$statusCode]['schema_properties'] = [];
+                                    }
+                                    foreach ($keys as $key) {
+                                        $type = 'string';
+                                        if (in_array($key, ['user', 'order', 'product', 'data'])) {
+                                            $type = 'object';
+                                        } elseif (in_array($key, ['users', 'orders', 'products', 'items', 'results'])) {
+                                            $type = 'array';
+                                        }
+                                        $customResponses[$statusCode]['schema_properties'][$key] = [
+                                            'type' => $type
+                                        ];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             } catch (\Throwable $e) {
                 // Fail-safe
             }
@@ -148,14 +198,11 @@ class RouteParser
         return $apiRoutes;
     }
 
-    /**
-     * Safe extraction of FormRequest validation rules using IoC container resolution
-     * and request replication to prevent runtime execution failures.
-     */
     protected function extractValidationRules(string $controller, string $method, LaravelRoute $route): array
     {
+        // 1. Try to find injected FormRequest first
         try {
-            $reflection = new ReflectionMethod($controller, $method);
+            $reflection = new \ReflectionMethod($controller, $method);
             foreach ($reflection->getParameters() as $param) {
                 $type = $param->getType();
                 if ($type && !$type->isBuiltin()) {
@@ -165,11 +212,58 @@ class RouteParser
                     }
                 }
             }
-        } catch (Throwable $e) {
-            // Fail gracefully to prevent interrupting the route parser execution
+        } catch (\Throwable $e) {
+            // Fail gracefully
+        }
+
+        // 2. Fallback to inline validation extraction (Scramble-equivalent parser)
+        try {
+            $reflection = new \ReflectionMethod($controller, $method);
+            $filename = $reflection->getFileName();
+            if ($filename && file_exists($filename)) {
+                $fileContent = file_get_contents($filename);
+                $lines = explode("\n", $fileContent);
+                
+                // Isolate the method's body
+                $start = $reflection->getStartLine() - 1;
+                $end = $reflection->getEndLine();
+                $methodCode = implode("\n", array_slice($lines, $start, $end - $start));
+                
+                // Match validate( or Validator::make( followed by an array rules block
+                if (preg_match('/(?:validate|make)\s*\(\s*(?:(?:[^,\[]+?)\s*,\s*)?\[(.*?)\]/s', $methodCode, $matches)) {
+                    $rulesBlock = $matches[1];
+                    return $this->parseInlineRulesString($rulesBlock);
+                }
+            }
+        } catch (\Throwable $e) {
+            // Fail gracefully
         }
 
         return [];
+    }
+
+    /**
+     * Decodes and parses string rules and array rules from an inline validation block.
+     */
+    protected function parseInlineRulesString(string $rulesBlock): array
+    {
+        $rules = [];
+        // Match: 'field' => 'rules' or "field" => "rules" or 'field' => ['rule1', 'rule2']
+        preg_match_all('/[\'"]([^\'"]+)[\'"]\s*=>\s*(?:[\'"]([^\'"]+)[\'"]|\[(.*?)\])/s', $rulesBlock, $matches, PREG_SET_ORDER);
+        
+        foreach ($matches as $match) {
+            $field = $match[1];
+            if (!empty($match[2])) {
+                // String format rules (e.g. 'required|email|nullable')
+                $rules[$field] = explode('|', $match[2]);
+            } elseif (!empty($match[3])) {
+                // Array format rules (e.g. ['required', 'email'])
+                preg_match_all('/[\'"]([^\'"]+)[\'"]/', $match[3], $ruleMatches);
+                $rules[$field] = $ruleMatches[1] ?? [];
+            }
+        }
+        
+        return $rules;
     }
 
     /**
@@ -387,5 +481,91 @@ class RouteParser
         $method = count($methods) > 0 ? $methods[0] : 'GET';
         $cleanedUri = preg_replace('/[^A-Za-z0-9]/', ' ', $uri);
         return strtolower($method) . '.' . str_replace(' ', '.', trim($cleanedUri));
+    }
+
+    /**
+     * Extract balanced square bracket array from PHP source code.
+     * This method scans the code starting from the $startOffset and counts opening and closing
+     * square brackets. It returns the raw string content inside the first top-level balanced
+     * array block, perfectly preserving nested array and function parameters.
+     */
+    protected function extractBalancedArrayString(string $code, int $startOffset): ?string
+    {
+        $length = strlen($code);
+        $bracketCount = 0;
+        $arrayStart = -1;
+
+        // Iterate character-by-character starting at the matched response offset
+        for ($i = $startOffset; $i < $length; $i++) {
+            $char = $code[$i];
+            if ($char === '[') {
+                if ($bracketCount === 0) {
+                    $arrayStart = $i; // Record the beginning of the outermost array
+                }
+                $bracketCount++;
+            } elseif ($char === ']') {
+                $bracketCount--;
+                // Outermost balanced bracket match has closed
+                if ($bracketCount === 0 && $arrayStart !== -1) {
+                    return substr($code, $arrayStart + 1, $i - $arrayStart - 1);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Parse top-level array keys from an array source representation.
+     * Implements a state-machine that respects quoted strings, escaping, and bracket depth.
+     * This completely prevents extracting nested key-value definitions (e.g. nested array properties),
+     * isolating only the primary keys returned directly in the response payload.
+     */
+    protected function parseTopLevelKeys(string $arrayContent): array
+    {
+        $length = strlen($arrayContent);
+        $bracketCount = 0;
+        $inString = false;
+        $stringChar = '';
+        $keys = [];
+
+        for ($i = 0; $i < $length; $i++) {
+            $char = $arrayContent[$i];
+
+            // 1. Detect quote boundary starts and ends while respecting backslash escaping
+            if (($char === "'" || $char === '"') && ($i === 0 || $arrayContent[$i-1] !== '\\')) {
+                if ($inString && $stringChar === $char) {
+                    $inString = false;
+                } elseif (!$inString) {
+                    $inString = true;
+                    $stringChar = $char;
+                }
+                continue;
+            }
+
+            // 2. Ignore characters inside strings completely
+            if ($inString) {
+                continue;
+            }
+
+            // 3. Track bracket boundaries to ignore any inner/nested arrays or closures
+            if ($char === '[' || $char === '(') {
+                $bracketCount++;
+            } elseif ($char === ']') {
+                $bracketCount--;
+            }
+
+            // 4. If we are at the top-level, locate assignment arrows ("=>")
+            if ($bracketCount === 0) {
+                if ($char === '=' && $i + 1 < $length && $arrayContent[$i+1] === '>') {
+                    $beforeArrow = substr($arrayContent, 0, $i);
+                    // Extract the closest preceding quoted string before the arrow
+                    if (preg_match('/[\'"]([^\'"]+)[\'"]\s*$/', $beforeArrow, $keyMatch)) {
+                        $keys[] = $keyMatch[1];
+                    }
+                }
+            }
+        }
+
+        return $keys;
     }
 }

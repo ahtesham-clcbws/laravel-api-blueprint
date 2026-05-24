@@ -39,6 +39,7 @@ class ApiBlueprintTest extends TestCase
         $router->post('/api/users/store', [MockUserController::class, 'store'])->name('users.store');
         $router->get('/api/users/index', [MockUserController::class, 'index'])->name('users.index');
         $router->get('/api/users/{id}/profile', [MockUserController::class, 'show'])->name('users.show')->middleware('auth');
+        $router->get('/api/users/search', [MockUserController::class, 'search'])->name('users.search');
     }
 
     public function test_route_parser_extracts_api_routes_safely(): void
@@ -238,6 +239,52 @@ class ApiBlueprintTest extends TestCase
         $this->assertArrayNotHasKey('security', $postStore);
         $this->assertArrayHasKey('security', $getShow);
         $this->assertEquals([['bearerAuth' => []]], $getShow['security']);
+
+        // Assert dynamic response extraction from controller code
+        $this->assertArrayHasKey('201', $postStore['responses']);
+        $this->assertArrayHasKey('content', $postStore['responses']['201']);
+        $storeResponseSchema = $postStore['responses']['201']['content']['application/json']['schema']['properties'];
+        $this->assertArrayHasKey('token', $storeResponseSchema);
+        $this->assertEquals('string', $storeResponseSchema['token']['type']);
+        $this->assertArrayHasKey('user', $storeResponseSchema);
+        $this->assertEquals('object', $storeResponseSchema['user']['type']);
+        $this->assertArrayHasKey('message', $storeResponseSchema);
+        $this->assertEquals('string', $storeResponseSchema['message']['type']);
+
+        // Assert inline validation and query parameter flattening on GET route
+        $this->assertArrayHasKey('/api/users/search', $spec['paths']);
+        $this->assertArrayHasKey('get', $spec['paths']['/api/users/search']);
+        $getSearch = $spec['paths']['/api/users/search']['get'];
+        $this->assertNotEmpty($getSearch['parameters']);
+
+        // Assert query parameters mapped correctly (in: query)
+        $queryParams = \Illuminate\Support\Collection::make($getSearch['parameters']);
+        $queryParamQuery = $queryParams->firstWhere('name', 'query');
+        $this->assertNotNull($queryParamQuery);
+        $this->assertEquals('query', $queryParamQuery['in']);
+        $this->assertTrue($queryParamQuery['required']);
+        $this->assertEquals('string', $queryParamQuery['schema']['type']);
+
+        $queryParamStatus = $queryParams->firstWhere('name', 'status');
+        $this->assertNotNull($queryParamStatus);
+        $this->assertEquals('query', $queryParamStatus['in']);
+        $this->assertFalse($queryParamStatus['required']);
+        $this->assertEquals('string', $queryParamStatus['schema']['type']);
+        $this->assertTrue($queryParamStatus['schema']['nullable']);
+        $this->assertEquals(['active', 'inactive'], $queryParamStatus['schema']['enum']);
+
+        $queryParamCategory = $queryParams->firstWhere('name', 'category[id]');
+        $this->assertNotNull($queryParamCategory);
+        $this->assertEquals('query', $queryParamCategory['in']);
+
+        // Assert search response schema is extracted automatically
+        $this->assertArrayHasKey('200', $getSearch['responses']);
+        $this->assertArrayHasKey('content', $getSearch['responses']['200']);
+        $searchResponseSchema = $getSearch['responses']['200']['content']['application/json']['schema']['properties'];
+        $this->assertArrayHasKey('results', $searchResponseSchema);
+        $this->assertEquals('array', $searchResponseSchema['results']['type']);
+        $this->assertArrayHasKey('count', $searchResponseSchema);
+        $this->assertEquals('string', $searchResponseSchema['count']['type']);
     }
 
     public function test_postman_generator_creates_collection(): void
@@ -285,7 +332,11 @@ class MockUserController
      */
     public function store(MockUserStoreRequest $request)
     {
-        return Response::json(['success' => true]);
+        return Response::json([
+            'message' => 'User registered and authenticated successfully.',
+            'user' => ['id' => 1, 'name' => 'John Doe'],
+            'token' => 'mocked-token-string'
+        ], 201);
     }
 
     public function index()
@@ -301,5 +352,19 @@ class MockUserController
     public function show($id)
     {
         return Response::json([]);
+    }
+
+    public function search(\Illuminate\Http\Request $request)
+    {
+        $request->validate([
+            'query' => 'required|string|min:3',
+            'status' => 'nullable|in:active,inactive',
+            'category.id' => 'integer',
+        ]);
+
+        return Response::json([
+            'results' => [],
+            'count' => 0
+        ]);
     }
 }

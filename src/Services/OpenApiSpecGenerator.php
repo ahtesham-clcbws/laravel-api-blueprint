@@ -12,7 +12,7 @@ class OpenApiSpecGenerator
             'openapi' => '3.1.0',
             'info' => [
                 'title' => config('app.name', 'Laravel') . ' API Specifications',
-                'version' => '1.0.0',
+                'version' => '1.1.0',
                 'description' => 'Automatically generated API Specifications via Laravel API Blueprint.',
             ],
             'servers' => [
@@ -70,8 +70,45 @@ class OpenApiSpecGenerator
 
                 if (!empty($route['responses'])) {
                     foreach ($route['responses'] as $code => $res) {
-                        $responses[$code] = $res;
+                        if (!empty($res['schema_properties'])) {
+                            $resProperties = [];
+                            foreach ($res['schema_properties'] as $key => $prop) {
+                                $resProperties[$key] = [
+                                    'type' => $prop['type']
+                                ];
+                                if ($prop['type'] === 'string') {
+                                    if ($key === 'token') {
+                                        $resProperties[$key]['example'] = 'd3b07384d113edec49eaa6238ad5ff00';
+                                    } elseif ($key === 'message') {
+                                        $resProperties[$key]['example'] = 'Operation completed successfully.';
+                                    }
+                                } elseif ($prop['type'] === 'object') {
+                                    $resProperties[$key]['properties'] = new \stdClass();
+                                } elseif ($prop['type'] === 'array') {
+                                    $resProperties[$key]['items'] = ['type' => 'object'];
+                                }
+                            }
+                            $responses[$code] = [
+                                'description' => $res['description'] ?? 'Successful operation',
+                                'content' => [
+                                    'application/json' => [
+                                        'schema' => [
+                                            'type' => 'object',
+                                            'properties' => $resProperties
+                                        ]
+                                    ]
+                                ]
+                            ];
+                        } else {
+                            $responses[$code] = $res;
+                        }
                     }
+                }
+
+                // If GET or DELETE, map nested rules to query parameters (Scramble-equivalent)
+                if (!empty($route['nested_rules']) && in_array($method, ['get', 'delete'])) {
+                    $queryParameters = $this->mapNestedRulesToQueryParameters($route['nested_rules']);
+                    $parameters = array_merge($parameters, $queryParameters);
                 }
 
                 $pathItem = [
@@ -123,6 +160,73 @@ class OpenApiSpecGenerator
         }
 
         return $spec;
+    }
+
+    /**
+     * Maps nested rule trees to flat query parameters for GET and DELETE endpoints.
+     */
+    protected function mapNestedRulesToQueryParameters(array $properties): array
+    {
+        $params = [];
+        foreach ($properties as $name => $prop) {
+            $type = $prop['type'] ?? 'string';
+            $required = $prop['required'] ?? false;
+
+            if ($type === 'object') {
+                $subParams = $this->mapNestedRulesToQueryParameters($prop['properties'] ?? []);
+                foreach ($subParams as $subParam) {
+                    $subParam['name'] = $name . '[' . $subParam['name'] . ']';
+                    $params[] = $subParam;
+                }
+            } elseif ($type === 'array') {
+                $params[] = [
+                    'name' => $name,
+                    'in' => 'query',
+                    'required' => $required,
+                    'schema' => [
+                        'type' => 'array',
+                        'items' => ['type' => 'string'],
+                    ],
+                ];
+            } else {
+                $param = [
+                    'name' => $name,
+                    'in' => 'query',
+                    'required' => $required,
+                    'schema' => [
+                        'type' => ($type === 'number') ? 'number' : (($type === 'boolean') ? 'boolean' : 'string'),
+                    ],
+                ];
+
+                if (!empty($prop['rules'])) {
+                    $rules = $prop['rules'];
+                    $rulesString = implode('|', $rules);
+
+                    if (str_contains($rulesString, 'email')) {
+                        $param['schema']['format'] = 'email';
+                    } elseif (str_contains($rulesString, 'url')) {
+                        $param['schema']['format'] = 'uri';
+                    } elseif (str_contains($rulesString, 'uuid')) {
+                        $param['schema']['format'] = 'uuid';
+                    } elseif (str_contains($rulesString, 'date')) {
+                        $param['schema']['format'] = 'date';
+                    }
+
+                    // Parse nullable and enum
+                    foreach ($rules as $rule) {
+                        if ($rule === 'nullable') {
+                            $param['schema']['nullable'] = true;
+                        } elseif (str_starts_with($rule, 'in:')) {
+                            $enumVals = array_map(fn($v) => trim($v, "'\" "), explode(',', substr($rule, 3)));
+                            $param['schema']['enum'] = $enumVals;
+                        }
+                    }
+                }
+
+                $params[] = $param;
+            }
+        }
+        return $params;
     }
 
     protected function mapNestedPropertiesToOpenApi(array $properties): array
@@ -220,6 +324,11 @@ class OpenApiSpecGenerator
                             } else {
                                 $mapped[$name]['maxLength'] = $maxVal;
                             }
+                        } elseif ($rule === 'nullable') {
+                            $mapped[$name]['nullable'] = true;
+                        } elseif (str_starts_with($rule, 'in:')) {
+                            $enumVals = array_map(fn($v) => trim($v, "'\" "), explode(',', substr($rule, 3)));
+                            $mapped[$name]['enum'] = $enumVals;
                         }
                     }
                 } else {

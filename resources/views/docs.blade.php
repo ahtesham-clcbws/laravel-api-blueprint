@@ -378,7 +378,7 @@
     <!-- Premium Header -->
     <header class="premium-header">
         <div class="logo-area">
-            <img src="https://img.shields.io/badge/Laravel%20API%20Blueprint-v1.0.0-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel API Blueprint" height="32" style="border-radius: 4px;">
+            <img src="https://img.shields.io/badge/Laravel%20API%20Blueprint-v1.1.0-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel API Blueprint" height="32" style="border-radius: 4px;">
             <div class="logo-title">Specifications Dashboard</div>
         </div>
         <div class="control-area">

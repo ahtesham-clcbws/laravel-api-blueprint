@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Laravel%20API%20Blueprint-v1.0.0-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel API Blueprint" height="50">
+  <img src="https://img.shields.io/badge/Laravel%20API%20Blueprint-v1.1.0-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel API Blueprint" height="50">
 </p>
 
 # Laravel API Blueprint
@@ -17,14 +17,27 @@
 ### 1. Zero Bloat & Zero External Dependencies
 Avoid heavy annotation parsers or bloated libraries (such as Swagger-PHP or L5-Swagger). Laravel API Blueprint relies entirely on PHP's native reflection capabilities and built-in Laravel utilities, keeping your vendor footprints completely clean.
 
-### 2. Resilient Reflection Context Mocking
-Laravel resolves `FormRequest` classes from the Service Container during their resolution cycle. By default, this triggers Laravel's `afterResolving` hooks which immediately run validation on empty incoming request parameters, throwing a fatal `ValidationException` (e.g. *"The email field is required"*). 
-Laravel API Blueprint solves this completely by **manually instantiating request objects** (`new $className()`) and **manually setting the Service Container reference** (`$request->setContainer(Container::getInstance())`). This safely bypasses auto-execution triggers while ensuring the request retains full container awareness for looking up custom rules, translations, and database scopes!
+### 2. Scramble-Level Parsing & Inline Validation Scanner
+Enables fully dynamic documentation without static AST dependencies. If a controller action doesn't use a dedicated `FormRequest` class, the engine fallback scans the controller method's source code at runtime using a high-precision regex scanner to isolate `$request->validate([...])` or `Validator::make(...)` arrays and extract their rules.
 
-### 3. Dynamic Dot-Notation Schema Mapper
-Validation schemas are often defined using flat dot-notation structures (e.g. `profile` as `array`, alongside child rules `profile.bio` or `items.*.price`). The Route Parser recursively translates these flat definitions into beautiful, multi-dimensional, nested schema objects and array structures, automatically upgrading array types to object definitions if they contain named children.
+### 3. Balanced Bracket-Counting JSON Response Extractor
+Automatically reads the controller action's raw code body to discover returned JSON responses (e.g. `response()->json([ 'token' => ... ])`). Utilizing a 100% robust bracket-counting algorithm, it isolates only top-level returned keys (`token`, `user`, `message`, `data`, etc.) and automatically documents them in the OpenAPI `responses` schema, solving the gap where return payloads were undocumented.
 
-### 4. Interactive In-Browser Exporters (The Glassmorphism Drawer)
+### 4. GET/DELETE Query Parameter Flat-Mapping
+GET and DELETE request validation schemas are dynamically flattened using dot-notation (e.g. `filter[status]`) and mapped directly into query parameter blocks (`in: query`), preventing invalid `requestBody` blocks in OpenAPI specs.
+
+### 5. Validation Auto-Confirmation & Advanced Constraints
+- Automatically injects matching validation inputs (like `password_confirmation` for `password`) if a rule contains the `confirmed` validation rule.
+- Maps `nullable` constraints (`'nullable' => true` in OpenAPI 3.1.0) and `in:val1,val2` rules into standard `'enum'` constraints.
+- Formats standard constraints like `email`, `url`, `uuid`, `date`, `password`, `min`, and `max` automatically.
+
+### 6. PHPDoc Comment Parsing & Path Variable Extraction
+Leverages PHP `ReflectionMethod::getDocComment()` to parse dynamic controller method summaries, descriptions, and custom `@response` codes. It also scans route URIs to detect, extract, and document parameter identifiers (such as `{id}`) as variables.
+
+### 7. Automatic Security Inference & Token Authentication
+Inspects route middlewares for authentication tags (e.g. `auth` or `AuthenticateApiToken`). When authentication is required, it injects the security requirements (`"security": [{"bearerAuth": []}]`) onto the route, triggering Stoplight Elements' Bearer Token authentication UI automatically.
+
+### 8. Interactive In-Browser Exporters (The Glassmorphism Drawer)
 Inside the interactive documentation web UI, users can slide out a glowing Glassmorphism control panel with live tabs to instantly view and copy generated payload schemas in **5 client-side languages**:
 1.  **TypeScript**: Nested type-safe `interface` models.
 2.  **Swift**: Nested iOS `Codable` structs.
@@ -32,10 +45,10 @@ Inside the interactive documentation web UI, users can slide out a glowing Glass
 4.  **Dart**: Flutter-compatible models complete with factory `fromJson` and standard `toJson` serialization/deserialization utilities.
 5.  **Go**: Idiomatic Go struct definitions featuring standard `json:"...,omitempty"` structure tags.
 
-### 5. Postman Collection & OpenAPI Compliant Specification Exporter
+### 9. Postman Collection & OpenAPI Compliant Specification Exporter
 Compiles fully compliant **OpenAPI 3.1.0 specifications** and structured **Postman v2.1.0 Collections**. Mapped endpoints automatically convert Laravel route variables (e.g. `users/{user}`) into Postman-native path variables (`:user`) and prepopulate body templates with structured JSON mock payloads.
 
-### 6. Sub-Millisecond Serialization Caching
+### 10. Sub-Millisecond Serialization Caching
 In production environments, scanning classes and running reflection on every page view degrades performance. The package features a lightweight file serialization caching engine that saves compiled OpenAPI JSON schemas directly to the server's cache, ensuring sub-millisecond route execution speeds.
 
 ---
@@ -294,8 +307,8 @@ Runtime:       PHP 8.5.6
 ........
 .........                                                           9 / 9 (100%)
 
-Time: 00:00.238, Memory: 10.00 MB
-OK (9 tests, 35 assertions)
+Time: 00:00.260, Memory: 10.00 MB
+OK (9 tests, 118 assertions)
 ```
 
 ---

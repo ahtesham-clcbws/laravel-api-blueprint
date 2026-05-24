@@ -1,6 +1,6 @@
 {
     "name": "clcbws/laravel-api-blueprint",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Zero-dependency automatic Laravel API route documentation, TypeScript/Swift/Java/Dart/Go schema, and Postman exporter.",
     "type": "library",
     "license": "MIT",
