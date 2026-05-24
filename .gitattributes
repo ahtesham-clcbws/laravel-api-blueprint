@@ -1,0 +1,4 @@
+/tests export-ignore
+/demo_project export-ignore
+/.agents export-ignore
+/.gitignore export-ignore
