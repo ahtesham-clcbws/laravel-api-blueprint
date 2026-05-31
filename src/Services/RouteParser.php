@@ -25,6 +25,7 @@ class RouteParser
         $apiRoutes = [];
         $routes = Route::getRoutes()->getRoutes();
         $prefixes = Config::get('api-blueprint.route_prefixes', ['api/']);
+        $tagResolver = new RouteTagResolver();
 
         foreach ($routes as $route) {
             // Match configured prefixes
@@ -77,7 +78,7 @@ class RouteParser
 
             $nestedSchema = $this->buildNestedSchema($rawRules);
 
-            // Reflection-based PHPDoc extraction (Scramble-equivalent automatic parsing)
+            // Reflection-based PHPDoc extraction (automatic parsing)
             $summary = '';
             $description = '';
             $customResponses = [];
@@ -111,7 +112,7 @@ class RouteParser
                     }
                 }
 
-                // Automatically scan code body to extract returned JSON keys (Scramble-equivalent)
+                // Automatically scan code body to extract returned JSON keys
                 $filename = $reflection->getFileName();
                 if ($filename && file_exists($filename)) {
                     $fileContent = file_get_contents($filename);
@@ -164,7 +165,7 @@ class RouteParser
                 // Fail-safe
             }
 
-            // Extract and verify route middleware to determine if authentication is required (Scramble-equivalent)
+            // Extract and verify route middleware to determine if authentication is required
             $middlewares = method_exists($route, 'gatherMiddleware') ? $route->gatherMiddleware() : [];
             $authRequired = false;
             foreach ($middlewares as $mw) {
@@ -192,6 +193,7 @@ class RouteParser
                 'auth_required'=> $authRequired,
                 'raw_rules'    => $rawRules,
                 'nested_rules' => $nestedSchema,
+                'tags'         => $tagResolver->resolve($controller, $method, $route->uri()),
             ];
         }
 
@@ -216,7 +218,7 @@ class RouteParser
             // Fail gracefully
         }
 
-        // 2. Fallback to inline validation extraction (Scramble-equivalent parser)
+        // 2. Fallback to inline validation extraction
         try {
             $reflection = new \ReflectionMethod($controller, $method);
             $filename = $reflection->getFileName();

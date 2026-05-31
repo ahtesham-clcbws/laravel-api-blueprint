@@ -40,6 +40,10 @@ class ApiBlueprintTest extends TestCase
         $router->get('/api/users/index', [MockUserController::class, 'index'])->name('users.index');
         $router->get('/api/users/{id}/profile', [MockUserController::class, 'show'])->name('users.show')->middleware('auth');
         $router->get('/api/users/search', [MockUserController::class, 'search'])->name('users.search');
+
+        $router->get('/api/v1/employees/list', [MockEmployeeController::class, 'list'])->name('employees.list');
+        $router->get('/api/v1/employees/detail', [MockEmployeeController::class, 'detail'])->name('employees.detail');
+        $router->get('/api/orders/invoice', [MockOrderController::class, 'invoice'])->name('orders.invoice');
     }
 
     public function test_route_parser_extracts_api_routes_safely(): void
@@ -285,6 +289,11 @@ class ApiBlueprintTest extends TestCase
         $this->assertEquals('array', $searchResponseSchema['results']['type']);
         $this->assertArrayHasKey('count', $searchResponseSchema);
         $this->assertEquals('string', $searchResponseSchema['count']['type']);
+
+        // Assert high-level x-tagGroups generation
+        $this->assertArrayHasKey('x-tagGroups', $spec);
+        $this->assertEquals('V1', $spec['x-tagGroups'][0]['name']);
+        $this->assertContains('V1 / Employee Custom', $spec['x-tagGroups'][0]['tags']);
     }
 
     public function test_postman_generator_creates_collection(): void
@@ -298,11 +307,62 @@ class ApiBlueprintTest extends TestCase
 
         $this->assertArrayHasKey('info', $collection);
         $this->assertArrayHasKey('item', $collection);
-        $this->assertEquals('users.store', $collection['item'][0]['name']);
+        $this->assertEquals('MockUser', $collection['item'][0]['name']);
+        $this->assertEquals('users.store', $collection['item'][0]['item'][0]['name']);
+    }
+
+    public function test_route_grouping_resolution_layers(): void
+    {
+        // 1. Configure custom manual mapping in config
+        \Illuminate\Support\Facades\Config::set('api-blueprint.groups', [
+            'api/orders/*' => 'Manual Billing',
+        ]);
+
+        $parser = new RouteParser();
+        $routes = $parser->getApiRoutes();
+        $routesCol = Collection::make($routes);
+
+        // Verify config override matches manually
+        $invoiceRoute = $routesCol->firstWhere('name', 'orders.invoice');
+        $this->assertNotNull($invoiceRoute);
+        $this->assertEquals(['Manual Billing'], $invoiceRoute['tags']);
+
+        // Verify PHPDoc @group on method overrides class attribute
+        $listRoute = $routesCol->firstWhere('name', 'employees.list');
+        $this->assertNotNull($listRoute);
+        $this->assertEquals(['V1 / Employee Custom'], $listRoute['tags']);
+
+        // Verify Class PHP 8 Attribute fallback
+        $detailRoute = $routesCol->firstWhere('name', 'employees.detail');
+        $this->assertNotNull($detailRoute);
+        $this->assertEquals(['V1 / Employee Core'], $detailRoute['tags']);
+    }
+
+    public function test_custom_markdown_overview_and_default_fallback(): void
+    {
+        $parser = new RouteParser();
+        $routes = $parser->getApiRoutes();
+        $generator = new OpenApiSpecGenerator();
+
+        // 1. Test default fallback description
+        \Illuminate\Support\Facades\Config::set('api-blueprint.overview_path', null);
+        $spec = $generator->generate($routes);
+        $this->assertStringContainsString('# API Documentation & Integration Guide', $spec['info']['description']);
+
+        // 2. Test custom Markdown loading
+        $tempPath = tempnam(sys_get_temp_dir(), 'overview');
+        file_put_contents($tempPath, '# Custom Landing Overview File');
+        \Illuminate\Support\Facades\Config::set('api-blueprint.overview_path', $tempPath);
+
+        $spec2 = $generator->generate($routes);
+        $this->assertEquals('# Custom Landing Overview File', $spec2['info']['description']);
+        unlink($tempPath);
     }
 }
 
 // --- MOCK DECLARATIONS FOR THE TEST SUITE ---
+
+use LaravelApiBlueprint\Attributes\Group;
 
 class MockUserStoreRequest extends FormRequest
 {
@@ -366,5 +426,33 @@ class MockUserController
             'results' => [],
             'count' => 0
         ]);
+    }
+}
+
+#[Group('Employee Core')]
+class MockEmployeeController
+{
+    /**
+     * @group Employee Custom
+     */
+    public function list()
+    {
+        return Response::json([]);
+    }
+
+    public function detail()
+    {
+        return Response::json([]);
+    }
+}
+
+class MockOrderController
+{
+    /**
+     * @tags Orders, Sales
+     */
+    public function invoice()
+    {
+        return Response::json([]);
     }
 }

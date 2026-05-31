@@ -8,12 +8,20 @@ class OpenApiSpecGenerator
 {
     public function generate(array $apiRoutes): array
     {
+        $overviewPath = config('api-blueprint.overview_path');
+        $overviewContent = '';
+        if ($overviewPath && file_exists($overviewPath)) {
+            $overviewContent = file_get_contents($overviewPath);
+        } else {
+            $overviewContent = $this->getDefaultOverviewDescription();
+        }
+
         $spec = [
             'openapi' => '3.1.0',
             'info' => [
                 'title' => config('app.name', 'Laravel') . ' API Specifications',
-                'version' => '1.1.0',
-                'description' => 'Automatically generated API Specifications via Laravel API Blueprint.',
+                'version' => config('api-blueprint.version', '1.0.0'),
+                'description' => $overviewContent,
             ],
             'servers' => [
                 [
@@ -105,7 +113,7 @@ class OpenApiSpecGenerator
                     }
                 }
 
-                // If GET or DELETE, map nested rules to query parameters (Scramble-equivalent)
+                // If GET or DELETE, map nested rules to query parameters
                 if (!empty($route['nested_rules']) && in_array($method, ['get', 'delete'])) {
                     $queryParameters = $this->mapNestedRulesToQueryParameters($route['nested_rules']);
                     $parameters = array_merge($parameters, $queryParameters);
@@ -113,7 +121,7 @@ class OpenApiSpecGenerator
 
                 $pathItem = [
                     'summary' => $route['summary'] ?? $route['name'],
-                    'tags' => $this->determineRouteTags($route['uri']),
+                    'tags' => $route['tags'] ?? $this->determineRouteTags($route['uri']),
                     'parameters' => $parameters,
                     'responses' => $responses,
                 ];
@@ -157,6 +165,48 @@ class OpenApiSpecGenerator
 
                 $spec['paths'][$uri][$method] = $pathItem;
             }
+        }
+
+        // Generate high-level x-tagGroups to create collapsible parent version folders in Stoplight Elements
+        $allTags = [];
+        foreach ($apiRoutes as $route) {
+            $tags = $route['tags'] ?? $this->determineRouteTags($route['uri']);
+            foreach ($tags as $tag) {
+                $allTags[$tag] = true;
+            }
+        }
+        $allTags = array_keys($allTags);
+
+        $tagGroups = [];
+        $generalTags = [];
+        foreach ($allTags as $tag) {
+            $tagStr = is_array($tag) ? implode(', ', $tag) : (string) $tag;
+            $matches = [];
+            if (preg_match('/^(v[0-9]+)\s*[\/\-]\s*(.+)$/i', $tagStr, $matches)) {
+                $versionGroup = strtoupper((string) $matches[1]); // e.g. V1
+                $tagGroups[$versionGroup][] = $tagStr;
+            } else {
+                $generalTags[] = $tagStr;
+            }
+        }
+
+        $xTagGroups = [];
+        foreach ($tagGroups as $groupName => $tags) {
+            $xTagGroups[] = [
+                'name' => $groupName,
+                'tags' => $tags,
+            ];
+        }
+
+        if (!empty($generalTags)) {
+            $xTagGroups[] = [
+                'name' => 'General API',
+                'tags' => $generalTags,
+            ];
+        }
+
+        if (!empty($xTagGroups)) {
+            $spec['x-tagGroups'] = $xTagGroups;
         }
 
         return $spec;
@@ -373,5 +423,32 @@ class OpenApiSpecGenerator
         $primary = $segments[0] ?? 'General';
         
         return [ucfirst($primary)];
+    }
+
+    /**
+     * Get the default premium Markdown integration guide.
+     */
+    protected function getDefaultOverviewDescription(): string
+    {
+        return "# API Documentation & Integration Guide\n\n" .
+            "Welcome to the official API documentation! This interactive specifications dashboard is designed to provide you with all the details required to integrate with our system seamlessly.\n\n" .
+            "## Getting Started\n\n" .
+            "To authenticate your API requests:\n" .
+            "1. Obtain an API bearer token from your account dashboard.\n" .
+            "2. In this dashboard, click the **Authorize** button at the top-right of an endpoint or in the sidebar.\n" .
+            "3. Paste your token (format: `Bearer <token>`).\n\n" .
+            "## Client Code Generation\n\n" .
+            "We provide dynamic type-safe client schemas generated in real-time from active request rules:\n" .
+            "*   Click on **Client Schemas** in the top navigation bar.\n" .
+            "*   Select your target language (TypeScript, Swift, Java, Dart, Go).\n" .
+            "*   Copy or download the payload models to jumpstart your development.\n\n" .
+            "## Standard Responses\n\n" .
+            "Unless stated otherwise, our API endpoints communicate using the standard JSON format:\n" .
+            "*   `200 OK` - Operation completed successfully.\n" .
+            "*   `201 Created` - Resource created successfully.\n" .
+            "*   `400 Bad Request` - Invalid request syntax or structure.\n" .
+            "*   `401 Unauthenticated` - Authentication failed or bearer token missing.\n" .
+            "*   `403 Forbidden` - Insufficient privileges to access the resource.\n" .
+            "*   `422 Unprocessable Content` - Request validation failed (details provided in response body).";
     }
 }

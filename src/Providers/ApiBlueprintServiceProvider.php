@@ -46,6 +46,7 @@ class ApiBlueprintServiceProvider extends ServiceProvider
             ->group(function () {
                 Route::get('/', [ApiBlueprintController::class, 'ui'])->name('api-blueprint.ui');
                 Route::get('/schema.json', [ApiBlueprintController::class, 'schema'])->name('api-blueprint.schema');
+                Route::get('/postman.json', [ApiBlueprintController::class, 'postman'])->name('api-blueprint.postman');
             });
     }
 }

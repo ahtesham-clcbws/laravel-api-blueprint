@@ -74,4 +74,33 @@ return [
         'dart_path'       => storage_path('app/api-blueprint/api.dart'),
         'go_path'         => storage_path('app/api-blueprint/api.go'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Route Grouping / Tagging Mappings
+    |--------------------------------------------------------------------------
+    | Define custom tags/groups for specific URI patterns or controller names.
+    | Matches can use wildcards (e.g. 'api/v1/auth/*' or 'App\Http\Controllers\Admin\*').
+    */
+    'groups' => [
+        // 'api/v1/auth/*' => 'Authentication',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | API Documentation Overview
+    |--------------------------------------------------------------------------
+    | Path to a Markdown file containing the custom overview/guide documentation.
+    | If not specified or if the file does not exist, a default elegant guide is shown.
+    */
+    'overview_path' => resource_path('api-blueprint/overview.md'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | API Version
+    |--------------------------------------------------------------------------
+    | The current version of your API endpoints.
+    | This is mapped to the OpenAPI and Postman schemas automatically.
+    */
+    'version' => env('API_BLUEPRINT_VERSION', '1.0.0'),
 ];

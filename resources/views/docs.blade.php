@@ -121,6 +121,35 @@
             background: rgba(255, 255, 255, 0.1);
         }
 
+        .nav-icon-link {
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid var(--border-glass);
+            background: rgba(255, 255, 255, 0.03);
+            text-decoration: none;
+        }
+        .nav-icon-link:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+        }
+        body.theme-light .nav-icon-link {
+            color: #4b5563;
+            border-color: rgba(0, 0, 0, 0.08);
+            background: rgba(0, 0, 0, 0.02);
+        }
+        body.theme-light .nav-icon-link:hover {
+            color: #111827;
+            background: rgba(0, 0, 0, 0.06);
+            border-color: rgba(0, 0, 0, 0.15);
+        }
+
         /* Glassmorphism Client Code Drawer */
         .drawer-overlay {
             position: fixed;
@@ -371,17 +400,99 @@
             border-left-color: rgba(16, 185, 129, 0.4) !important;
         }
 
+        /* Version Selector Premium Styling */
+        .version-select {
+            height: 34px;
+            padding: 0 12px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            font-weight: 600;
+            border: 1px solid var(--border-glass);
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+        .version-select:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+        .version-select option {
+            background: var(--bg-dark);
+            color: var(--text-main);
+        }
+
+        /* Light theme overrides for version selection */
+        body.theme-light .version-select {
+            background: #ffffff !important;
+            color: #374151 !important;
+            border: 1px solid rgba(0, 0, 0, 0.12) !important;
+        }
+        body.theme-light .version-select:hover {
+            background: #f3f4f6 !important;
+            border-color: rgba(0, 0, 0, 0.2) !important;
+        }
+        body.theme-light .version-select option {
+            background: #ffffff !important;
+            color: #374151 !important;
+        }
+        body.theme-light .version-label {
+            color: #4b5563 !important;
+        }
+
     </style>
 </head>
 <body data-theme="dark">
 
+    @php
+        $defaultVersion = !empty($versions) ? end($versions) : '';
+        $initialSchemaUrl = $schemaUrl;
+        $initialPostmanUrl = $postmanUrl;
+        if ($defaultVersion) {
+            $initialSchemaUrl .= '?version=' . $defaultVersion;
+            $initialPostmanUrl .= '?version=' . $defaultVersion;
+        }
+    @endphp
+
     <!-- Premium Header -->
     <header class="premium-header">
         <div class="logo-area">
-            <img src="https://img.shields.io/badge/Laravel%20API%20Blueprint-v1.1.0-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel API Blueprint" height="32" style="border-radius: 4px;">
+            <img src="https://img.shields.io/badge/Laravel%20API%20Blueprint-v1.5.0-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel API Blueprint" height="32" style="border-radius: 4px;">
             <div class="logo-title">Specifications Dashboard</div>
         </div>
         <div class="control-area">
+            @if(!empty($versions))
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="version-label" style="font-size: 12px; color: var(--text-muted); font-weight: 600;">API Version:</span>
+                    <select id="api-version-select" onchange="changeVersion(this.value)" class="version-select">
+                        <option value="">All Versions</option>
+                        @foreach($versions as $ver)
+                            <option value="{{ $ver }}" {{ $ver === $defaultVersion ? 'selected' : '' }}>{{ strtoupper($ver) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
+
+            <a href="https://github.com/ahtesham-clcbws/laravel-api-blueprint" target="_blank" class="nav-icon-link" title="GitHub Repository">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+                </svg>
+            </a>
+            <a href="https://packagist.org/packages/clcbws/laravel-api-blueprint" target="_blank" class="nav-icon-link" title="Packagist Package">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+            </a>
+            <a href="{{ $initialPostmanUrl }}" id="postman-download-btn" download class="btn-secondary" style="display: flex; align-items: center; gap: 8px; text-decoration: none; height: 34px; box-sizing: border-box;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Postman Collection
+            </a>
             <button class="btn-premium" onclick="openDrawer()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
                 Client Schemas
@@ -394,7 +505,7 @@
     <div class="elements-wrapper">
         <elements-api 
             id="docs-engine"
-            apiDescriptionUrl="{{ $schemaUrl }}" 
+            apiDescriptionUrl="{{ $initialSchemaUrl }}" 
             router="hash" 
             layout="sidebar"
             appearance="dark">
@@ -686,6 +797,38 @@
                 }
             }
             return code;
+        }
+
+        function changeVersion(version) {
+            const container = document.querySelector('.elements-wrapper');
+            if (container) {
+                let url = "{{ $schemaUrl }}";
+                let postmanUrl = "{{ $postmanUrl }}";
+                if (version) {
+                    url += "?version=" + version;
+                    postmanUrl += "?version=" + version;
+                }
+                
+                // Get the current appearance theme
+                const currentTheme = document.body.getAttribute('data-theme') || 'dark';
+                
+                // Create a completely new elements-api element to force re-render and clean API display
+                const newEl = document.createElement('elements-api');
+                newEl.id = 'docs-engine';
+                newEl.setAttribute('apiDescriptionUrl', url);
+                newEl.setAttribute('router', 'hash');
+                newEl.setAttribute('layout', 'sidebar');
+                newEl.setAttribute('appearance', currentTheme);
+                
+                // Clear and append
+                container.innerHTML = '';
+                container.appendChild(newEl);
+                
+                const postmanBtn = document.getElementById('postman-download-btn');
+                if (postmanBtn) {
+                    postmanBtn.setAttribute('href', postmanUrl);
+                }
+            }
         }
 
         document.addEventListener('DOMContentLoaded', () => {

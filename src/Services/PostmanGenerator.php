@@ -17,7 +17,11 @@ class PostmanGenerator
             'item' => [],
         ];
 
+        $groupedItems = [];
+
         foreach ($apiRoutes as $route) {
+            $tag = $route['tags'][0] ?? 'General';
+
             foreach ($route['methods'] as $method) {
                 // Convert `{param}` variables to `:param` in URL for Postman compatibility
                 $rawUri = ltrim($route['uri'], '/');
@@ -76,12 +80,19 @@ class PostmanGenerator
                     $request['url']['variable'] = $variables;
                 }
 
-                $collection['item'][] = [
+                $groupedItems[$tag][] = [
                     'name'    => $route['name'],
                     'request' => $request,
                     'response' => []
                 ];
             }
+        }
+
+        foreach ($groupedItems as $tag => $items) {
+            $collection['item'][] = [
+                'name' => $tag,
+                'item' => $items
+            ];
         }
 
         return json_encode($collection, JSON_PRETTY_PRINT);
